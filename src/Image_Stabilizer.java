@@ -90,6 +90,10 @@ public class Image_Stabilizer implements PlugInFilter {
     double     tol = 1e-7;
     double     alpha = 0.9;
 
+    boolean        multipleChannels = false;
+    int            referenceCh = 1;
+    int            targetCh = 1;
+
     /* transformation coefficient Log */
     boolean    logEnabled = false;
     Editor     logEditor = null;
@@ -197,8 +201,12 @@ public class Image_Stabilizer implements PlugInFilter {
         gd.addCheckbox("Log_Transformation_Coefficients", false);
         if (!stackVirtual)
             gd.addCheckbox("Output_to_a_New_Stack", false);
+        gd.addCheckbox("Multiple Channels", multipleChannels);
+        gd.addNumericField("Reference Channel", referenceCh, 0, 11, null);
+        gd.addNumericField("Target Channel", targetCh, 0, 11, null);
 
         gd.showDialog();
+
 
         if (gd.wasCanceled())
             return false;
@@ -207,6 +215,9 @@ public class Image_Stabilizer implements PlugInFilter {
         alpha = gd.getNextNumber();
         maxIter = (int)gd.getNextNumber();
         tol = gd.getNextNumber();
+        multipleChannels = gd.getNextBoolean();
+        referenceCh = (int) gd.getNextNumber();
+        targetCh = (int) gd.getNextNumber();
 
         if (logEnabled = gd.getNextBoolean()){
             logEditor = new Editor();
