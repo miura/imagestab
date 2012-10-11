@@ -64,6 +64,7 @@ import java.lang.*;
 import java.io.File;
 import java.io.IOException;
 import java.awt.event.*;
+import java.util.ArrayList;
 import ij.*;
 import ij.gui.*;
 import ij.process.*;
@@ -441,6 +442,108 @@ public class Image_Stabilizer implements PlugInFilter {
     }
 
 
+    void processKnown(ImageProcessor ipRef, ArrayList<double[][]> wpA)
+    {
+        int width = ipRef.getWidth();
+        int height = ipRef.getHeight();
+        int stackSize = stack.getSize(); //stack will be the target stack
+
+        if (stackSize != wpA.size())
+            return;
+        for (int i = 0; i < wpA.size(); i++) {
+            if (IJ.escapePressed() || imp.getWindow().isClosed()) 
+                break;
+
+            int slice = 0;
+            int interval = 0;
+            double[][] wp = null;
+            
+            //String s = log[logLine];
+            
+            wp = wpA.get(i);
+
+            if (slice < 1 || slice > stackSize) {
+                IJ.showStatus("Skipping slice " + slice + "...");
+                continue;
+            }
+            
+            String label = stack.getSliceLabel(i);
+            IJ.showStatus("Stabilizing " + i + "/" + stackSize + 
+                " ... (Press 'ESC' to Cancel)");
+            ImageProcessor ip = stack.getProcessor(i);
+            ImageProcessor ipFloat = ip.convertToFloat();
+
+            if (ip instanceof ColorProcessor) {
+                ColorProcessor ipColorOut = new ColorProcessor(width, height);
+
+                if (transform == AFFINE)
+                    warpColorAffine(ipColorOut, (ColorProcessor)ip, wp);
+                else
+                    warpColorTranslation(ipColorOut, (ColorProcessor)ip, wp);
+
+                if (stackOut == null) {
+                    if (!stackVirtual)
+                        stack.setPixels(ipColorOut.getPixels(), i);
+                    else
+                        saveImage(ipColorOut, i);
+                }
+                else if (interval < 0)
+                    stackOut.addSlice(label, ipColorOut, 0);
+                else
+                    stackOut.addSlice(label, ipColorOut);
+            }
+            else {
+
+                FloatProcessor ipFloatOut = new FloatProcessor(width, height);
+
+                if (transform == AFFINE)
+                    warpAffine(ipFloatOut, ipFloat, wp);
+                else
+                    warpTranslation(ipFloatOut, ipFloat, wp);
+
+                if (ip instanceof ByteProcessor) {
+                    ImageProcessor ipByteOut = ipFloatOut.convertToByte(false);
+                    if (stackOut == null) {
+                        if (!stackVirtual)
+                            stack.setPixels(ipByteOut.getPixels(), i);
+                        else
+                            saveImage(ipByteOut, i);
+                    }
+                    else if (interval < 0)
+                        stackOut.addSlice(label, ipByteOut, 0);
+                    else
+                        stackOut.addSlice(label, ipByteOut);
+                }
+                else if (ip instanceof ShortProcessor) {
+                    ImageProcessor ipShortOut = ipFloatOut.convertToShort(false);
+                    if (stackOut == null) {
+                        if (!stackVirtual)
+                            stack.setPixels(ipShortOut.getPixels(),i);
+                        else
+                            saveImage(ipShortOut, i);
+                    }
+                    else if (interval < 0)
+                        stackOut.addSlice(label, ipShortOut, 0);
+                    else
+                        stackOut.addSlice(label, ipShortOut);
+                }
+                else {
+                    if (stackOut == null) {
+                        if (!stackVirtual)
+                            stack.setPixels(ipFloatOut.getPixels(), i);
+                        else
+                            saveImage(ipFloatOut, i);
+                    }
+                    else if (interval < 0)
+                        stackOut.addSlice(label, ipFloatOut, 0);
+                    else
+                        stackOut.addSlice(label, ipFloatOut);
+                }
+            }
+
+            showProgress(i / (double) wpA.size());
+        }
+    }
     void saveImage(ImageProcessor ip, int slice) {
         VirtualStack virtualStack = (VirtualStack)stack;
         String fileName = null;
